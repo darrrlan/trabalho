@@ -59,16 +59,17 @@ class MLP(object):
         pesos_oculta_saida_shape = (8, 1)  # A forma dos pesos de oculta para saída
 
         # Extraia os pesos do array fornecido e reorganize-os
-        pesos_input_oculta = np.array(weights[:40]).reshape(pesos_input_oculta_shape)
-        bias_oculta = np.array(weights[40:48])
-        pesos_oculta_saida = np.array(weights[48:56]).reshape(pesos_oculta_saida_shape)
-        bias_saida = np.array(weights[56:])
+        pesos_input_oculta = np.array(weights[:pesos_input_oculta_shape[0]*pesos_input_oculta_shape[1]]).reshape(pesos_input_oculta_shape)
+        pesos_oculta_saida = np.array(weights[pesos_input_oculta_shape[0]*pesos_input_oculta_shape[1]:pesos_input_oculta_shape[0]*pesos_input_oculta_shape[1] + pesos_oculta_saida_shape[0]*pesos_oculta_saida_shape[1]]).reshape(pesos_oculta_saida_shape)
+        bias_oculta = np.array(weights[-(pesos_input_oculta_shape[1] + pesos_oculta_saida_shape[0]):-(pesos_oculta_saida_shape[0])])
+        bias_saida = np.array([weights[-1]])  # Pegue o último elemento como bias de saída
 
         # Configure os pesos internos com os valores extraídos
         self.pesos_input_oculta = pesos_input_oculta
         self.bias_oculta = bias_oculta
         self.pesos_oculta_saida = pesos_oculta_saida
         self.bias_saida = bias_saida
+
 
     def treinamento(self, entrada, esperado, epocas):
         for _ in range(epocas):

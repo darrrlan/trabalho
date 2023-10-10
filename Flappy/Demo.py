@@ -25,6 +25,8 @@ class FlappyBird_Human:
         self.gravity = 10
         self.dead = False
         self.sprite = 0
+        self.distance_x = 0
+        self.score_on_death = 0  # Adicione esta linha
         self.counter = 0
         self.offset = random.randint(-200, 200)
 
@@ -42,6 +44,8 @@ class FlappyBird_Human:
             return 1
         else:
             return 0
+    def get_score(self):
+        return self.counter
 
     def updateWalls(self):
         self.wallx -= 4
@@ -51,6 +55,7 @@ class FlappyBird_Human:
             self.offset = random.randint(-200, 200)
 
     def birdUpdate(self):
+        self.distance_x += 4 
         if self.jump:
             self.jumpSpeed -= 1
             self.birdY -= self.jumpSpeed
@@ -67,25 +72,18 @@ class FlappyBird_Human:
                                0 - self.gap - self.offset - 10,
                                self.wallDown.get_width() - 10,
                                self.wallDown.get_height())
-        if upRect.colliderect(self.bird):
+        if upRect.colliderect(self.bird) or downRect.colliderect(self.bird) or not 0 < self.bird[1] < 720:
             self.dead = True
-            self.checkJumpValidity()
             self.pipes_passed_history.append(self.counter)
-            self.resetGame()
-        if downRect.colliderect(self.bird):
-            self.dead = True
-            self.checkJumpValidity()
-            self.pipes_passed_history.append(self.counter)
-            self.resetGame()
-        if not 0 < self.bird[1] < 720:
-            self.pipes_passed_history.append(self.counter)
-            self.resetGame()
+            #print(f"Pontuação quando o pássaro morreu: {self.score_on_death}")  # Adicione esta linha
 
-    def checkJumpValidity(self):
-        if self.jump and self.dead:
-            print("O pássaro morreu devido a um pulo inválido!")
+    def get_scorre(self):
+        return self.counter
+    def get_distance_x(self):
+        return self.distance_x
 
     def resetGame(self):
+        self.score_on_death = self.counter  # Armazena a pontuação atual quando o pássaro morre
         self.birdY = 350
         self.jump = 0
         self.gravity = 10
@@ -95,6 +93,7 @@ class FlappyBird_Human:
         self.offset = random.randint(-110, 110)
         self.generation_counter += 1
         self.generation_history.append(self.generation_counter)
+
 
     def run(self):
         clock = pygame.time.Clock()
@@ -165,61 +164,61 @@ class FlappyBird_Human:
             pygame.display.update()
             
     def run_game_with_mlp(self, mlp):
-        clock = pygame.time.Clock()
-        pygame.font.init()
-        font = pygame.font.SysFont("Arial", 50)
-        
-        while True:
-            clock.tick(60)
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                if (event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN) and not self.dead:
+            clock = pygame.time.Clock()
+            pygame.font.init()
+            font = pygame.font.SysFont("Arial", 50)
+            
+            while True:
+                clock.tick(60)
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                    if (event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN) and not self.dead:
+                        self.jump = 17
+                        self.gravity = 10
+                        self.jumpSpeed = 15
+
+                self.screen.fill((255, 255, 255))
+                self.screen.blit(self.background, (0, 0))
+                self.screen.blit(self.wallUp,
+                                (self.wallx, 360 + self.gap - self.offset))
+                self.screen.blit(self.wallDown,
+                                (self.wallx, 0 - self.gap - self.offset - 10))
+
+                generation_text = font.render(f"Geração: {self.generation_counter}", -1, (255, 255, 255))
+                pipes_passed_text = font.render(f"Scorre: {self.counter}", -1, (255, 255, 255))
+                self.screen.blit(generation_text, (10, 10))
+                self.screen.blit(pipes_passed_text, (10, 60))
+
+                mlp_input = [
+                    390 + self.gap / 2 - self.offset,
+                    abs(self.birdY - 390 + self.gap / 2 - self.offset),
+                    abs(self.birdY - 390 + self.gap / 2 - self.offset - self.gap),
+                    self.birdY,
+                    700 - self.birdY
+                ]
+
+                mlp_input = [(x - 0) / (400 - 0) for x in mlp_input]
+
+                prediction = mlp.feedForward(mlp_input)
+
+                if prediction > 0.5:
                     self.jump = 17
                     self.gravity = 10
                     self.jumpSpeed = 15
+                if self.dead:
+                    self.sprite = 2
+                    return self.score_on_death
+                elif self.jump:
+                    self.sprite = 1
+                self.screen.blit(self.birdSprites[self.sprite], (70, int(self.birdY)))
 
-            self.screen.fill((255, 255, 255))
-            self.screen.blit(self.background, (0, 0))
-            self.screen.blit(self.wallUp,
-                            (self.wallx, 360 + self.gap - self.offset))
-            self.screen.blit(self.wallDown,
-                            (self.wallx, 0 - self.gap - self.offset - 10))
-
-            generation_text = font.render(f"Geração: {self.generation_counter}", -1, (255, 255, 255))
-            pipes_passed_text = font.render(f"Scorre: {self.counter}", -1, (255, 255, 255))
-            self.screen.blit(generation_text, (10, 10))
-            self.screen.blit(pipes_passed_text, (10, 60))
-
-            mlp_input = [
-                390 + self.gap / 2 - self.offset,
-                abs(self.birdY - 390 + self.gap / 2 - self.offset),
-                abs(self.birdY - 390 + self.gap / 2 - self.offset - self.gap),
-                self.birdY,
-                700 - self.birdY
-            ]
-
-            mlp_input = [(x - 0) / (400 - 0) for x in mlp_input]
-
-            prediction = mlp.feedForward(mlp_input)
-            print(prediction)
-
-            if prediction > 0.5 and not self.dead:
-                self.jump = 17
-                self.gravity = 10
-                self.jumpSpeed = 15
-            if self.dead:
-                self.sprite = 2
-            elif self.jump:
-                self.sprite = 1
-            self.screen.blit(self.birdSprites[self.sprite], (70, int(self.birdY)))
-
-            if not self.dead:
-                self.sprite = 0
-            self.updateWalls()
-            self.birdUpdate()
-            pygame.display.update()
+                if not self.dead:
+                    self.sprite = 0
+                self.updateWalls()
+                self.birdUpdate()
+                pygame.display.update()
 
 if __name__ == "__main__":
     flappy_bird = FlappyBird_Human().run()
